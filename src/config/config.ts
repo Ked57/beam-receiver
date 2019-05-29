@@ -13,7 +13,7 @@ const isValidConfig = (config: any): config is Config =>
   config && config.downloadPath;
 
 export const initConfig = (path: string): Config => {
-  const config = initConfig(path);
+  const config = readConfig(path);
   if (!isValidConfig(config)) {
     throw new Error("Error parsing config, format is invalid");
   }

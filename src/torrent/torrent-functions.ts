@@ -1,12 +1,12 @@
 export const addTorrentViaMagnet = (
   torrentClient: any,
-  magnet: string,
+  source: any,
   path: string
 ): Promise<any> => {
   return new Promise((resolve, reject) => {
     try {
-      torrentClient.add(magnet, { path }, function(torrent: any) {
-        torrent.on("done", function() {
+      torrentClient.add(source, { path }, (torrent: any) => {
+        torrent.on("done", () => {
           console.log("torrent download finished");
         });
         console.log("Torrent added");

@@ -6,8 +6,8 @@
   "scripts": {
     "start": "npm run build && npm run serve",
     "start:dev": "npm run build && npm run serve:dev",
-    "serve": "node ./dist/app.js",
-    "serve:dev": "node -r dotenv/config ./dist/app.js",
+    "serve": "node ./dist/src/app.js",
+    "serve:dev": "node -r dotenv/config ./dist/src/app.js",
     "dev": "nodemon",
     "build": "tsc",
     "test": "npm run build && ava",

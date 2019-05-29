@@ -16,9 +16,10 @@ const app = express();
 app.use(bodyParser.json());
 
 const config = initConfig(configPath);
-console.log(config);
 
 const torrentClient = new WebTorrent();
+
+torrentClient.seed(config.downloadPath, () => console.log("Torrents seeding"));
 
 const torrents: any[] = [];
 
@@ -35,7 +36,7 @@ app.post(
       res.status(400).send({ message: "Bad request: nothing was provided" });
       return;
     }
-    addTorrentViaMagnet(torrentClient, req.body.magnet, config.downloadPath)
+    addTorrentViaMagnet(torrentClient, req.body.source, config.downloadPath)
       .then(torrent => {
         torrents.push(torrent);
         res.sendStatus(200);
