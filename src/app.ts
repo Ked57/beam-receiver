@@ -1,6 +1,11 @@
 import express from "express";
 import WebTorrent from "webtorrent-hybrid";
-import { addTorrentViaMagnet } from "./torrent/torrent-functions";
+import {
+  addTorrentViaMagnet,
+  createTorrentObject,
+  fetchUsersTorrents,
+  getDownloadInfoFromTorrent
+} from "./torrent/torrent-functions";
 import bodyParser from "body-parser";
 import { initConfig } from "./config/config";
 import {
@@ -9,7 +14,8 @@ import {
   authenticate,
   generateToken,
   parseBearerAuth,
-  logout
+  logout,
+  authenticateViaToken
 } from "./auth/auth";
 import { Db } from "db";
 import {
@@ -54,30 +60,65 @@ app.get("/", (req: express.Request, res: express.Response) => {
 app.post(
   "/torrent/add/magnet",
   (req: express.Request, res: express.Response) => {
+    if (!req.headers.authorization) {
+      res.status(403).send({ message: "You're not authorized to do that" });
+      return;
+    }
     if (!req.body) {
       res.status(400).send({ message: "Bad request: nothing was provided" });
       return;
     }
-    addTorrentViaMagnet(torrentClient, req.body.source, config.downloadPath)
-      .then(torrent => {
-        torrents.push(torrent);
-        res.sendStatus(200);
-      })
-      .catch(err => {
-        console.error(err);
-        res.status(500).send({ message: `Internal Error: ${err}` });
-      });
+    try {
+      const user = authenticateViaToken(
+        db,
+        parseBearerAuth(req.headers.authorization)
+      );
+
+      addTorrentViaMagnet(torrentClient, req.body.source, config.downloadPath)
+        .then(torrent => {
+          torrents.push(createTorrentObject(torrent, user));
+          res.sendStatus(200);
+        })
+        .catch(err => {
+          console.error(err);
+          res.status(500).send({ message: err });
+        });
+    } catch (err) {
+      console.error("Error trying to add a torrent via magnet => ", err);
+      res.status(403).send({ message: err });
+    }
   }
 );
 
-app.post(
-  "/torrents/progress",
-  (req: express.Request, res: express.Response) => {
-    res.send(
-      torrents.map(torrent => Math.round(torrent.progress * 100 * 100) / 100)
-    );
+app.post("/torrents", (req: express.Request, res: express.Response) => {
+  if (!req.headers.authorization) {
+    res.status(403).send({ message: "You're not authorized to do that" });
+    return;
   }
-);
+  if (!req.body) {
+    res.status(400).send({ message: "Bad request: nothing was provided" });
+    return;
+  }
+  try {
+    const user = authenticateViaToken(
+      db,
+      parseBearerAuth(req.headers.authorization)
+    );
+    const usersTorrents = fetchUsersTorrents(torrents, user);
+    res.send(
+      usersTorrents.map(torrent => {
+        return {
+          magnetURI: torrent.magnetURI,
+          name: torrent.torrent.name,
+          info: getDownloadInfoFromTorrent(torrent.torrent)
+        };
+      })
+    );
+  } catch (err) {
+    console.error("Error fetching the torrent list", err);
+    res.status(403).send({ message: err });
+  }
+});
 
 app.post(
   "/user/create",
@@ -99,7 +140,7 @@ app.post(
       })
       .catch(err => {
         console.error("Error registering an user => ", err);
-        res.status(500).send(err);
+        res.status(500).send({ message: err });
       });
   }
 );
@@ -125,7 +166,7 @@ app.post("/user/login", async (req: express.Request, res: express.Response) => {
     })
     .catch(err => {
       console.error("Error trying to login => ", err);
-      res.status(403).send(err);
+      res.status(403).send({ message: err });
     });
 });
 
@@ -148,7 +189,7 @@ app.post(
       res.sendStatus(200);
     } catch (err) {
       console.error("Error trying to logout => ", err);
-      res.status(403).send(err);
+      res.status(403).send({ message: err });
     }
   }
 );

@@ -55,6 +55,14 @@ export const generateToken = (db: Db, username: string) => {
   return token;
 };
 
+export const authenticateViaToken = (db: Db, token: string) => {
+  const user = findUserViaToken(db, token);
+  if (!user) {
+    throw new Error("Couldn't find an user matching the token provided");
+  }
+  return user;
+};
+
 const hashPassword = async (password: string, saltRounds: number) => {
   return await bcrypt.hash(password, saltRounds);
 };
