@@ -86,7 +86,11 @@ app.post(
         parseBearerAuth(req.headers.authorization)
       );
 
-      addTorrentViaMagnet(torrentClient, req.body.source, config.downloadPath)
+      addTorrentViaMagnet(
+        torrentClient,
+        req.body.source,
+        `${config.downloadPath}/${user.username}`
+      )
         .then(torrent => {
           db.torrents.push(createTorrentObject(torrent, user));
           saveDb(db, dbPath);

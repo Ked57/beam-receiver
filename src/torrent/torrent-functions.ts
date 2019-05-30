@@ -36,7 +36,7 @@ export const getDownloadInfoFromTorrent = (torrent: any) => {
     peers: torrent.numPeers,
     downloaded: prettyBytes(torrent.downloaded),
     total: prettyBytes(torrent.length),
-    remaining: torrent.timeRemaining / 1000, // in seconds
+    remaining: Math.round(torrent.timeRemaining / 1000), // in seconds
     downloadSpeed: prettyBytes(torrent.downloadSpeed), // String with unit. Is /s
     uploadSpeed: prettyBytes(torrent.uploadSpeed)
   };
@@ -70,18 +70,22 @@ export const restorePreviousTorrents = (
   downloadPath: string
 ) => {
   Promise.all(
-    db.torrents.map((torrent: Torrent) => {
-      return addTorrentViaMagnet(
-        torrentClient,
-        torrent.magnetURI,
-        downloadPath
-      ).then(torrentResult =>
-        Object.assign(torrent, { torrent: torrentResult })
+    db.users.map((user: User) => {
+      return fetchUsersTorrents(db.torrents, user).map(torrent =>
+        addTorrentViaMagnet(
+          torrentClient,
+          torrent.magnetURI,
+          `${downloadPath}/${user.username}`
+        ).then(torrentResult => {
+          Object.assign(torrent, { torrent: torrentResult });
+          torrentClient.seed(`${downloadPath}/${user.username}`, () =>
+            console.log("Torrent seeding")
+          );
+        })
       );
     })
-  ).then(() => {
+  ).finally(() => {
     console.log("All previous torrents restaured");
-    torrentClient.seed(downloadPath, () => console.log("Torrents seeding"));
   });
 };
 
