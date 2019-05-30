@@ -2,6 +2,7 @@ import fs from "fs";
 import { Db } from "db";
 import { isValidUserList } from "../user/user-functions";
 import { User } from "user";
+import { isValidTorrentList } from "../torrent/torrent-functions";
 
 export const loadDb = (path: string) => {
   try {
@@ -17,7 +18,8 @@ export const loadDb = (path: string) => {
 
 export const generateEmptyDB = (): Db => {
   return {
-    users: []
+    users: [],
+    torrents: []
   };
 };
 
@@ -33,9 +35,26 @@ export const registerUser = (db: Db, user: User) => {
 };
 
 export const saveDb = (db: Db, path: string) =>
-  fs.writeFile(path, JSON.stringify(db), "utf8", () =>
+  fs.writeFile(path, JSON.stringify(computeDb(db)), "utf8", () =>
     console.log("Successfuly saved database file")
   );
+
+const computeDb = (db: Db) => {
+  const computed = {
+    users: db.users,
+    torrents:
+      db.torrents.length > 0
+        ? db.torrents.map(torrent => {
+            return {
+              magnetURI: torrent.magnetURI,
+              linkedUser: torrent.linkedUser
+            };
+          })
+        : []
+  };
+  console.log(computed);
+  return computed;
+};
 
 export const findUser = (db: Db, username: string) => {
   const user = db.users.find(u => u.username === username);
@@ -54,4 +73,8 @@ export const findUserViaToken = (db: Db, token: string) => {
 };
 
 const isValidDb = (db: any): db is Db =>
-  db && db.users && isValidUserList(db.users);
+  db &&
+  db.users &&
+  isValidUserList(db.users) &&
+  db.torrents &&
+  isValidTorrentList(db.torrents);

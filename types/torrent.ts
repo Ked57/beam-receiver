@@ -1,5 +1,5 @@
 export type Torrent = {
   magnetURI: string;
   linkedUser: string;
-  torrent: any;
+  torrent?: any;
 };

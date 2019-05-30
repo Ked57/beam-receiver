@@ -4,7 +4,8 @@ import {
   addTorrentViaMagnet,
   createTorrentObject,
   fetchUsersTorrents,
-  getDownloadInfoFromTorrent
+  getDownloadInfoFromTorrent,
+  restorePreviousTorrents
 } from "./torrent/torrent-functions";
 import bodyParser from "body-parser";
 import { initConfig } from "./config/config";
@@ -17,14 +18,12 @@ import {
   logout,
   authenticateViaToken
 } from "./auth/auth";
-import { Db } from "db";
 import {
   loadDb,
   generateEmptyDB,
   registerUser,
   saveDb
 } from "./db/db-functions.";
-
 const configPath = process.env.BEAM_CONFIGPATH;
 if (!configPath) {
   throw new Error(
@@ -45,7 +44,7 @@ app.use(bodyParser.json());
 const config = initConfig(configPath);
 const db = loadDb(dbPath) || generateEmptyDB();
 if (db.users.length <= 0) {
-  createUser("admin", "password", config.saltRounds, true).then(user =>
+  createUser("admin", "admin", config.saltRounds, true).then(user =>
     registerUser(db, user)
       .then(() => {
         saveDb(db, dbPath);
@@ -62,10 +61,7 @@ if (db.users.length <= 0) {
 }
 
 const torrentClient = new WebTorrent();
-
-torrentClient.seed(config.downloadPath, () => console.log("Torrents seeding"));
-
-const torrents: any[] = [];
+restorePreviousTorrents(db, torrentClient, config.downloadPath);
 
 const port = process.env.BEAM_PORT;
 
@@ -92,7 +88,8 @@ app.post(
 
       addTorrentViaMagnet(torrentClient, req.body.source, config.downloadPath)
         .then(torrent => {
-          torrents.push(createTorrentObject(torrent, user));
+          db.torrents.push(createTorrentObject(torrent, user));
+          saveDb(db, dbPath);
           res.sendStatus(200);
         })
         .catch(err => {
@@ -120,7 +117,7 @@ app.post("/torrents", (req: express.Request, res: express.Response) => {
       db,
       parseBearerAuth(req.headers.authorization)
     );
-    const usersTorrents = fetchUsersTorrents(torrents, user);
+    const usersTorrents = fetchUsersTorrents(db.torrents, user);
     res.send(
       usersTorrents.map(torrent => {
         return {

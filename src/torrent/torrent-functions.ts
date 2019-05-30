@@ -1,5 +1,6 @@
 import { User } from "user";
 import { Torrent } from "torrent";
+import { Db } from "db";
 
 export const addTorrentViaMagnet = (
   torrentClient: any,
@@ -62,3 +63,32 @@ export const fetchUsersTorrents = (
 ): Torrent[] => {
   return torrents.filter(torrent => torrent.linkedUser === user.username);
 };
+
+export const restorePreviousTorrents = (
+  db: Db,
+  torrentClient: any,
+  downloadPath: string
+) => {
+  Promise.all(
+    db.torrents.map((torrent: Torrent) => {
+      return addTorrentViaMagnet(
+        torrentClient,
+        torrent.magnetURI,
+        downloadPath
+      ).then(torrentResult =>
+        Object.assign(torrent, { torrent: torrentResult })
+      );
+    })
+  ).then(() => {
+    console.log("All previous torrents restaured");
+    torrentClient.seed(downloadPath, () => console.log("Torrents seeding"));
+  });
+};
+
+export const isValidTorrent = (torrent: any): torrent is Torrent =>
+  torrent && torrent.magnetURI && torrent.linkedUser;
+
+export const isValidTorrentList = (torrents: any): torrents is Torrent[] =>
+  torrents &&
+  Array.isArray(torrents) &&
+  torrents.every(torrent => isValidTorrent(torrent));
