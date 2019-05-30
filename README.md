@@ -21,6 +21,7 @@ Provide the required env variables
 ```
 BEAM_PORT => Port exposed by the app
 BEAM_CONFIGPATH => Path the to config file, must be json
+BEAM_DBPATH => Path the to db file, must be json
 ```
 
 #### Install

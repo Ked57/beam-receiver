@@ -10,7 +10,7 @@ const readConfig = (path: string) => {
 };
 
 const isValidConfig = (config: any): config is Config =>
-  config && config.downloadPath;
+  config && config.downloadPath && config.saltRounds;
 
 export const initConfig = (path: string): Config => {
   const config = readConfig(path);
