@@ -3,4 +3,5 @@ export type User = {
   hashedPassword: string;
   mustChangePassword: boolean;
   token?: string;
+  isAdmin: boolean;
 };

@@ -31,12 +31,14 @@ export const logout = (db: Db, token: string) => {
 export const createUser = async (
   username: string,
   password: string,
-  saltRounds: number
+  saltRounds: number,
+  isAdmin: boolean
 ): Promise<User> => {
   return {
     username,
     hashedPassword: await hashPassword(password, saltRounds),
-    mustChangePassword: true
+    mustChangePassword: true,
+    isAdmin
   };
 };
 

@@ -43,7 +43,23 @@ const app = express();
 app.use(bodyParser.json());
 
 const config = initConfig(configPath);
-const db: Db = loadDb(dbPath) || generateEmptyDB();
+const db = loadDb(dbPath) || generateEmptyDB();
+if (db.users.length <= 0) {
+  createUser("admin", "password", config.saltRounds, true).then(user =>
+    registerUser(db, user)
+      .then(() => {
+        saveDb(db, dbPath);
+        console.info(
+          `WARNING: There's no user registered on your database. 
+        We've created one where username=admin and password=admin. 
+        You'll be prompted to change it on login`
+        );
+      })
+      .catch(err => {
+        console.error("Error registering an user => ", err);
+      })
+  );
+}
 
 const torrentClient = new WebTorrent();
 
@@ -133,7 +149,10 @@ app.post(
       return;
     }
     const [username, password] = parseBasicAuth(req.headers.authorization);
-    registerUser(db, await createUser(username, password, config.saltRounds))
+    registerUser(
+      db,
+      await createUser(username, password, config.saltRounds, false)
+    )
       .then(() => {
         saveDb(db, dbPath);
         res.sendStatus(200);

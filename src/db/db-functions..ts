@@ -28,7 +28,6 @@ export const registerUser = (db: Db, user: User) => {
     }
     db.users.push(user);
     //save user and resolve
-    console.log(user);
     resolve();
   });
 };
