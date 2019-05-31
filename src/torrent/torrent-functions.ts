@@ -8,6 +8,9 @@ export const addTorrentViaMagnet = (
   path: string
 ): Promise<any> => {
   return new Promise((resolve, reject) => {
+    if (!source) {
+      reject("No source url provided");
+    }
     try {
       torrentClient.add(source, { path }, (torrent: any) => {
         torrent.on("done", () => {
@@ -35,6 +38,7 @@ export const getDownloadInfoFromTorrent = (torrent: any) => {
     progress: Math.round(torrent.progress * 100 * 100) / 100,
     peers: torrent.numPeers,
     downloaded: prettyBytes(torrent.downloaded),
+    uploaded: prettyBytes(torrent.uploaded),
     total: prettyBytes(torrent.length),
     remaining: Math.round(torrent.timeRemaining / 1000), // in seconds
     downloadSpeed: prettyBytes(torrent.downloadSpeed), // String with unit. Is /s

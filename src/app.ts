@@ -24,6 +24,7 @@ import {
   registerUser,
   saveDb
 } from "./db/db-functions.";
+import cors from "cors";
 const configPath = process.env.BEAM_CONFIGPATH;
 if (!configPath) {
   throw new Error(
@@ -39,6 +40,7 @@ if (!dbPath) {
 
 const app = express();
 
+app.use(cors());
 app.use(bodyParser.json());
 
 const config = initConfig(configPath);
@@ -70,7 +72,7 @@ app.get("/", (req: express.Request, res: express.Response) => {
 });
 
 app.post(
-  "/torrent/add/magnet",
+  "/api/torrent/add/magnet",
   (req: express.Request, res: express.Response) => {
     if (!req.headers.authorization) {
       res.status(403).send({ message: "You're not authorized to do that" });
@@ -85,7 +87,7 @@ app.post(
         db,
         parseBearerAuth(req.headers.authorization)
       );
-
+      console.log(req.body);
       addTorrentViaMagnet(
         torrentClient,
         req.body.source,
@@ -107,7 +109,7 @@ app.post(
   }
 );
 
-app.post("/torrents", (req: express.Request, res: express.Response) => {
+app.post("/api/torrents", (req: express.Request, res: express.Response) => {
   if (!req.headers.authorization) {
     res.status(403).send({ message: "You're not authorized to do that" });
     return;
@@ -138,7 +140,7 @@ app.post("/torrents", (req: express.Request, res: express.Response) => {
 });
 
 app.post(
-  "/user/create",
+  "/api/user/create",
   async (req: express.Request, res: express.Response) => {
     if (
       !req.headers.authorization ||
@@ -165,33 +167,36 @@ app.post(
   }
 );
 
-app.post("/user/login", async (req: express.Request, res: express.Response) => {
-  if (
-    !req.headers.authorization ||
-    !req.headers.authorization.match(/Basic .*/)
-  ) {
-    res.status(403).send({
-      message: "Unauthorized: Payload doesn't match specifications"
-    });
-    return;
+app.post(
+  "/api/user/login",
+  async (req: express.Request, res: express.Response) => {
+    if (
+      !req.headers.authorization ||
+      !req.headers.authorization.match(/Basic .*/)
+    ) {
+      res.status(403).send({
+        message: "Unauthorized: Payload doesn't match specifications"
+      });
+      return;
+    }
+    const [username, password] = parseBasicAuth(req.headers.authorization);
+    authenticate(db, username, password)
+      .then(isAuthenticated => {
+        if (!isAuthenticated) {
+          throw new Error("Wrong password");
+        }
+        res.send({ token: generateToken(db, username) });
+        saveDb(db, dbPath);
+      })
+      .catch(err => {
+        console.error("Error trying to login => ", err);
+        res.status(403).send({ message: err });
+      });
   }
-  const [username, password] = parseBasicAuth(req.headers.authorization);
-  authenticate(db, username, password)
-    .then(isAuthenticated => {
-      if (!isAuthenticated) {
-        throw new Error("Wrong password");
-      }
-      res.send(generateToken(db, username));
-      saveDb(db, dbPath);
-    })
-    .catch(err => {
-      console.error("Error trying to login => ", err);
-      res.status(403).send({ message: err });
-    });
-});
+);
 
 app.post(
-  "/user/logout",
+  "/api/user/logout",
   async (req: express.Request, res: express.Response) => {
     if (
       !req.headers.authorization ||
