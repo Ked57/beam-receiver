@@ -20,6 +20,7 @@ export const addTorrentViaMagnet = (
         resolve(torrent);
       });
     } catch (err) {
+      console.error(err);
       reject(err);
     }
   });
@@ -29,6 +30,7 @@ export const createTorrentObject = (torrent: any, user: User): Torrent => {
   return {
     magnetURI: torrent.magnetURI,
     linkedUser: user.username,
+    name: torrent.name,
     torrent
   };
 };
@@ -75,26 +77,34 @@ export const restorePreviousTorrents = (
 ) => {
   Promise.all(
     db.users.map((user: User) => {
-      return fetchUsersTorrents(db.torrents, user).map(torrent =>
+      return fetchUsersTorrents(db.torrents, user).map((torrent, index) => {
         addTorrentViaMagnet(
           torrentClient,
           torrent.magnetURI,
           `${downloadPath}/${user.username}`
-        ).then(torrentResult => {
-          Object.assign(torrent, { torrent: torrentResult });
-          torrentClient.seed(`${downloadPath}/${user.username}`, () =>
-            console.log("Torrent seeding")
-          );
-        })
-      );
+        )
+          .then(torrentResult => {
+            Object.assign(torrent, { torrent: torrentResult });
+          })
+          .catch(err => {
+            console.error(
+              "couldn't restore one of the torrents, deleting it ..."
+            );
+            db.torrents.splice(index, 1);
+          });
+      });
     })
-  ).finally(() => {
-    console.log("All previous torrents restaured");
-  });
+  )
+    .catch(err => {
+      console.error("couldn't restore one of the torrents, got error ", err);
+    })
+    .finally(() => {
+      console.log("All previous torrents restaured");
+    });
 };
 
 export const isValidTorrent = (torrent: any): torrent is Torrent =>
-  torrent && torrent.magnetURI && torrent.linkedUser;
+  torrent && torrent.magnetURI && torrent.linkedUser && torrent.name;
 
 export const isValidTorrentList = (torrents: any): torrents is Torrent[] =>
   torrents &&

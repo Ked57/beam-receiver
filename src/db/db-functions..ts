@@ -47,7 +47,8 @@ const computeDb = (db: Db) => {
         ? db.torrents.map(torrent => {
             return {
               magnetURI: torrent.magnetURI,
-              linkedUser: torrent.linkedUser
+              linkedUser: torrent.linkedUser,
+              name: torrent.name
             };
           })
         : []

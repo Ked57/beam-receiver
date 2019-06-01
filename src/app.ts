@@ -5,7 +5,8 @@ import {
   createTorrentObject,
   fetchUsersTorrents,
   getDownloadInfoFromTorrent,
-  restorePreviousTorrents
+  restorePreviousTorrents,
+  isValidTorrent
 } from "./torrent/torrent-functions";
 import bodyParser from "body-parser";
 import { initConfig } from "./config/config";
@@ -126,9 +127,12 @@ app.post("/api/torrents", (req: express.Request, res: express.Response) => {
     const usersTorrents = fetchUsersTorrents(db.torrents, user);
     res.send(
       usersTorrents.map(torrent => {
+        if (!torrent || !torrent.name) {
+          throw new Error("Invalid torrent found");
+        }
         return {
           magnetURI: torrent.magnetURI,
-          name: torrent.torrent.name,
+          name: torrent.name,
           info: getDownloadInfoFromTorrent(torrent.torrent)
         };
       })
