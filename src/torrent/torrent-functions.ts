@@ -20,7 +20,7 @@ export const addTorrentViaMagnet = (
         resolve(torrent);
       });
     } catch (err) {
-      console.error(err);
+      console.error("Error adding torrent via magnet", err);
       reject(err);
     }
   });
@@ -70,30 +70,36 @@ export const fetchUsersTorrents = (
   return torrents.filter(torrent => torrent.linkedUser === user.username);
 };
 
-export const restorePreviousTorrents = (
+export const restorePreviousTorrents = async (
   db: Db,
   torrentClient: any,
   downloadPath: string
 ) => {
   Promise.all(
-    db.users.map((user: User) => {
-      return fetchUsersTorrents(db.torrents, user).map((torrent, index) => {
-        addTorrentViaMagnet(
-          torrentClient,
-          torrent.magnetURI,
-          `${downloadPath}/${user.username}`
-        )
-          .then(torrentResult => {
-            Object.assign(torrent, { torrent: torrentResult });
-          })
-          .catch(err => {
-            console.error(
-              "couldn't restore one of the torrents, deleting it ..."
-            );
-            db.torrents.splice(index, 1);
-          });
-      });
-    })
+    await db.users
+      .map(async (user: User) => {
+        return await fetchUsersTorrents(db.torrents, user).map(
+          async (torrent, index) => {
+            try {
+              const torrentResult = await addTorrentViaMagnet(
+                torrentClient,
+                torrent.magnetURI,
+                `${downloadPath}/${user.username}`
+              );
+              Object.assign(torrent, { torrent: torrentResult });
+              console.log("restored torrent: ", torrent.name);
+            } catch (err) {
+              console.error(
+                "couldn't restore one of the torrents, deleting it ..."
+              );
+              db.torrents.splice(index, 1);
+            }
+          }
+        );
+      })
+      .reduce((previous, current) => {
+        return { ...previous, ...current };
+      })
   )
     .catch(err => {
       console.error("couldn't restore one of the torrents, got error ", err);
