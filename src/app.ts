@@ -5,10 +5,10 @@ import {
   createTorrentObject,
   fetchUsersTorrents,
   getDownloadInfoFromTorrent,
-  restorePreviousTorrents,
-  isValidTorrent
+  restorePreviousTorrents
 } from "./torrent/torrent-functions";
 import bodyParser from "body-parser";
+import multer from "multer";
 import { initConfig } from "./config/config";
 import {
   parseBasicAuth,
@@ -44,6 +44,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+const upload = multer();
 const config = initConfig(configPath);
 const db = loadDb(dbPath) || generateEmptyDB();
 if (db.users.length <= 0) {
@@ -73,6 +74,47 @@ app.get("/", (req: express.Request, res: express.Response) => {
 });
 
 app.post(
+  "/api/torrent/add/file",
+  upload.single("file"),
+  (req: express.Request, res: express.Response) => {
+    if (!req.headers.authorization) {
+      res.status(403).send({ message: "You're not authorized to do that" });
+      return;
+    }
+    try {
+      console.log(req.headers.authorization);
+      const user = authenticateViaToken(
+        db,
+        parseBearerAuth(req.headers.authorization)
+      );
+      if (!req.file) {
+        console.error("Error adding a torrent via file: No file provided");
+        res.status(400).send({ message: "No file provided" });
+        return;
+      }
+      addTorrentViaMagnet(
+        torrentClient,
+        req.file.buffer,
+        `${config.downloadPath}/${user.username}`
+      )
+        .then(torrent => {
+          db.torrents.push(createTorrentObject(torrent, user));
+          saveDb(db, dbPath);
+          res.sendStatus(200);
+        })
+        .catch(err => {
+          console.error(err);
+          res.status(500).send({ message: err });
+        });
+      res.sendStatus(200);
+    } catch (err) {
+      console.error("Error trying to add a torrent via file => ", err);
+      res.status(403).send({ message: err });
+    }
+  }
+);
+
+app.post(
   "/api/torrent/add/magnet",
   (req: express.Request, res: express.Response) => {
     if (!req.headers.authorization) {
@@ -88,7 +130,6 @@ app.post(
         db,
         parseBearerAuth(req.headers.authorization)
       );
-      console.log(req.body);
       addTorrentViaMagnet(
         torrentClient,
         req.body.source,
