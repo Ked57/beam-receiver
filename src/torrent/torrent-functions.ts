@@ -12,6 +12,7 @@ export const addTorrentViaMagnet = (
       reject("No source url provided");
     }
     try {
+      console.log("source", source);
       torrentClient.add(source, { path }, (torrent: any) => {
         torrent.on("done", () => {
           console.log("torrent download finished");
@@ -28,7 +29,7 @@ export const addTorrentViaMagnet = (
 
 export const createTorrentObject = (torrent: any, user: User): Torrent => {
   return {
-    magnetURI: torrent.magnetURI,
+    infoHash: torrent.infoHash,
     linkedUser: user.username,
     name: torrent.name,
     torrent
@@ -36,6 +37,9 @@ export const createTorrentObject = (torrent: any, user: User): Torrent => {
 };
 
 export const getDownloadInfoFromTorrent = (torrent: any) => {
+  if (!torrent) {
+    throw new Error("Torrent is undefined");
+  }
   return {
     progress: Math.round(torrent.progress * 100 * 100) / 100,
     peers: torrent.numPeers,
@@ -81,9 +85,10 @@ export const restorePreviousTorrents = async (
         return await fetchUsersTorrents(db.torrents, user).map(
           async (torrent, index) => {
             try {
+              console.log("trying to restore torrent", torrent);
               const torrentResult = await addTorrentViaMagnet(
                 torrentClient,
-                torrent.magnetURI,
+                torrent.infoHash,
                 `${downloadPath}/${user.username}`
               );
               Object.assign(torrent, { torrent: torrentResult });
@@ -110,7 +115,7 @@ export const restorePreviousTorrents = async (
 };
 
 export const isValidTorrent = (torrent: any): torrent is Torrent =>
-  torrent && torrent.magnetURI && torrent.linkedUser && torrent.name;
+  torrent && torrent.infoHash && torrent.linkedUser && torrent.name;
 
 export const isValidTorrentList = (torrents: any): torrents is Torrent[] =>
   torrents &&

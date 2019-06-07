@@ -5,7 +5,8 @@ import {
   createTorrentObject,
   fetchUsersTorrents,
   getDownloadInfoFromTorrent,
-  restorePreviousTorrents
+  restorePreviousTorrents,
+  isValidTorrent
 } from "./torrent/torrent-functions";
 import bodyParser from "body-parser";
 import multer from "multer";
@@ -65,6 +66,7 @@ if (db.users.length <= 0) {
 }
 
 const torrentClient = new WebTorrent();
+// No longer restoring previous torrents since it's not really functionnal at the moment, will do later
 restorePreviousTorrents(db, torrentClient, config.downloadPath);
 
 const port = process.env.BEAM_PORT;
@@ -167,16 +169,24 @@ app.post("/api/torrents", (req: express.Request, res: express.Response) => {
     );
     const usersTorrents = fetchUsersTorrents(db.torrents, user);
     res.send(
-      usersTorrents.map(torrent => {
-        if (!torrent || !torrent.name) {
-          throw new Error("Invalid torrent found");
-        }
-        return {
-          magnetURI: torrent.magnetURI,
-          name: torrent.name,
-          info: getDownloadInfoFromTorrent(torrent.torrent)
-        };
-      })
+      usersTorrents
+        .map((torrent, index) => {
+          if (!isValidTorrent(torrent) || !torrent.torrent) {
+            // for lack of better option
+            console.error(
+              "Couldn't find torrent or torrent definition is invalid, deleting it..."
+            );
+            db.torrents.splice(index, 1);
+            saveDb(db, dbPath);
+            return {};
+          }
+          return {
+            infoHash: torrent.infoHash,
+            name: torrent.name,
+            info: getDownloadInfoFromTorrent(torrent.torrent)
+          };
+        })
+        .filter(torrent => isValidTorrent(torrent) && torrent.torrent)
     );
   } catch (err) {
     console.error("Error fetching the torrent list", err);
