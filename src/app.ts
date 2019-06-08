@@ -153,13 +153,153 @@ app.post(
   }
 );
 
+app.post(
+  "/api/torrent/resume/:infoHash",
+  (req: express.Request, res: express.Response) => {
+    if (!req.headers.authorization) {
+      res.status(403).send({ message: "You're not authorized to do that" });
+      return;
+    }
+    try {
+      const hash = req.params.infoHash;
+      const user = authenticateViaToken(
+        db,
+        parseBearerAuth(req.headers.authorization)
+      );
+      const torrent = db.torrents.find(
+        torrent =>
+          torrent.infoHash === hash && torrent.linkedUser === user.username
+      );
+      if (!torrent) {
+        res.status(404).send({ message: "Bad torrent hashInfo" });
+        return;
+      }
+      if (!torrent.torrent) {
+        res.status(500).send({ message: "Incorrect torrent" });
+        return;
+      }
+      torrent.torrent.resume();
+      console.log("torrent resumed");
+      res.sendStatus(200);
+    } catch (err) {
+      console.error("Error resuming torrent", err);
+      res.status(403).send({ message: err });
+    }
+  }
+);
+
+app.post(
+  "/api/torrent/resume/:infoHash",
+  (req: express.Request, res: express.Response) => {
+    if (!req.headers.authorization) {
+      res.status(403).send({ message: "You're not authorized to do that" });
+      return;
+    }
+    try {
+      const hash = req.params.infoHash;
+      const user = authenticateViaToken(
+        db,
+        parseBearerAuth(req.headers.authorization)
+      );
+      const torrent = db.torrents.find(
+        torrent =>
+          torrent.infoHash === hash && torrent.linkedUser === user.username
+      );
+      if (!torrent) {
+        res.status(404).send({ message: "Bad torrent hashInfo" });
+        return;
+      }
+      if (!torrent.torrent) {
+        res.status(500).send({ message: "Incorrect torrent" });
+        return;
+      }
+      torrent.torrent.resume();
+      console.log("torrent resumed");
+      res.sendStatus(200);
+    } catch (err) {
+      console.error("Error resuming torrent", err);
+      res.status(403).send({ message: err });
+    }
+  }
+);
+
+app.post(
+  "/api/torrent/pause/:infoHash",
+  (req: express.Request, res: express.Response) => {
+    if (!req.headers.authorization) {
+      res.status(403).send({ message: "You're not authorized to do that" });
+      return;
+    }
+    try {
+      const hash = req.params.infoHash;
+      const user = authenticateViaToken(
+        db,
+        parseBearerAuth(req.headers.authorization)
+      );
+      const torrent = db.torrents.find(
+        torrent =>
+          torrent.infoHash === hash && torrent.linkedUser === user.username
+      );
+      if (!torrent) {
+        res.status(404).send({ message: "Bad torrent hashInfo" });
+        return;
+      }
+      if (!torrent.torrent) {
+        res.status(500).send({ message: "Incorrect torrent" });
+        return;
+      }
+      torrent.torrent.pause();
+      console.log("torrent paused");
+      res.sendStatus(200);
+    } catch (err) {
+      console.error("Error resuming torrent", err);
+      res.status(403).send({ message: err });
+    }
+  }
+);
+
+app.post(
+  "/api/torrent/delete/:infoHash",
+  (req: express.Request, res: express.Response) => {
+    if (!req.headers.authorization) {
+      res.status(403).send({ message: "You're not authorized to do that" });
+      return;
+    }
+    try {
+      const hash = req.params.infoHash;
+      const user = authenticateViaToken(
+        db,
+        parseBearerAuth(req.headers.authorization)
+      );
+      const torrent = db.torrents.find(
+        torrent =>
+          torrent.infoHash === hash && torrent.linkedUser === user.username
+      );
+      if (!torrent) {
+        res.status(404).send({ message: "Bad torrent hashInfo" });
+        return;
+      }
+      if (!torrent.torrent) {
+        res.status(500).send({ message: "Incorrect torrent" });
+        return;
+      }
+      console.log("trying to destroy torrent", torrent.name);
+      torrent.torrent.destroy(() => {
+        const index = db.torrents.indexOf(torrent);
+        db.torrents.splice(index, 1);
+        console.log("torrent deleted");
+        res.sendStatus(200);
+      });
+    } catch (err) {
+      console.error("Error resuming torrent", err);
+      res.status(403).send({ message: err });
+    }
+  }
+);
+
 app.post("/api/torrents", (req: express.Request, res: express.Response) => {
   if (!req.headers.authorization) {
     res.status(403).send({ message: "You're not authorized to do that" });
-    return;
-  }
-  if (!req.body) {
-    res.status(400).send({ message: "Bad request: nothing was provided" });
     return;
   }
   try {
@@ -186,7 +326,7 @@ app.post("/api/torrents", (req: express.Request, res: express.Response) => {
             info: getDownloadInfoFromTorrent(torrent.torrent)
           };
         })
-        .filter(torrent => isValidTorrent(torrent) && torrent.torrent)
+        .filter(torrent => torrent.infoHash && torrent.name && torrent.info)
     );
   } catch (err) {
     console.error("Error fetching the torrent list", err);
