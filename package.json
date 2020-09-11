@@ -44,7 +44,7 @@
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "multer": "^1.4.1",
-    "node-fetch": "^2.6.0",
+    "node-fetch": "^2.6.1",
     "uuid": "^3.3.2",
     "webtorrent-hybrid": "^2.1.0"
   }
